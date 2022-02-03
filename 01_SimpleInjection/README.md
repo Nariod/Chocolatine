@@ -19,9 +19,5 @@ Sandbox evasion mechanisms:
 In case of a failure, the process exits to prevent sandbox execution
 
 Added the "amsi_patch_bin.nim" content as a function.
-
-
-# added the "amsi_patch_bin.nim" content as a func
-# added the strenc module import for a bit more obfuscation
-# added the "etw_patch_bin.nim" content as a func
-# added sandbox checks from NimHollow
+Added the "etw_patch_bin.nim" content as a funcction.
+Added the strenc module import for a bit more obfuscation
