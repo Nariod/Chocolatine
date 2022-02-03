@@ -5,8 +5,8 @@ Chocolatine is a repo to have fun with OSEP concepts and the Nim language.
 Nim is an easy to learn, super powerful language that ticks all the requirements for malware development. 
 
 ## Install Nim
-sudo apt install nim
-nimble install nimcrypto strenc winim
+- `sudo apt install nim`
+- `nimble install nimcrypto strenc winim`
 
 ## Credits
 
