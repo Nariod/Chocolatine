@@ -2,9 +2,9 @@
 
 
 ## How to use
-
-nim c -d:release -d:danger -d:mingw --cpu=amd64 -d:strip --opt:size src/SimpleInjection.nim -o bin/SimpleInjection.exe
-
+git clone https://github.com/Nariod/Chocolatine.git
+cd 01_SimpleInjection
+nim c src/SimpleInjection.nim -o bin/SimpleInjection.exe
 
 ## Internals
 WIP
