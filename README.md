@@ -6,6 +6,7 @@ Nim is an easy to learn, super powerful language that ticks all the requirements
 
 ## Install Nim
 - `sudo apt install nim`
+- `sudo apt install mingw-w64`
 - `nimble install nimcrypto strenc winim`
 
 ## Credits

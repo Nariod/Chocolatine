@@ -7,7 +7,6 @@
 
 import winim/lean
 import osproc
-import strformat
 import dynlib
 import strenc # add a bit more of obfuscation for embedded strings
 import random
