@@ -2,9 +2,9 @@
 
 
 ## How to use
-git clone https://github.com/Nariod/Chocolatine.git
-cd 01_SimpleInjection
-nim c src/SimpleInjection.nim -o bin/SimpleInjection.exe
+- `git clone https://github.com/Nariod/Chocolatine.git`
+- `cd 01_SimpleInjection`
+- `nim c -d:release -d:danger -d:mingw --cpu=amd64 --app=console -d:strip --opt:size src/SimpleInjection.nim`
 
 ## Internals
 WIP
