@@ -21,5 +21,5 @@ In case of a failure, the process exits to prevent sandbox execution
 
 ### AV/EDR
 Added the "amsi_patch_bin.nim" content as a function.
-Added the "etw_patch_bin.nim" content as a funcction.
-Added the strenc module import for a bit more obfuscation
+Added the "etw_patch_bin.nim" content as a function.
+Added the strenc module import for a bit more obfuscation.

