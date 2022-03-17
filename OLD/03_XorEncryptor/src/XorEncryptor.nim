@@ -1,3 +1,4 @@
+import strutils
 
 # Thanks https://github.com/eversinc33/Red-Team-Advent-of-Code/blob/66c767836f3a441da861c7e7fb568a440b0bb7c0/16_Xor/xor.nim
 
@@ -53,19 +54,12 @@ when isMainModule:
     ]
 
     var encoded_shellcode: seq[byte] = @[]
-    var decoded_shellcode: seq[byte] = @[] 
+    #var final_shellcode: array[shellcode.len(),byte] = @[]
+    # I need to find a way to switch the result back to a list of hex
 
     for b in shellcode:
-        encoded_shellcode.add(b or secretkey)
+        encoded_shellcode.add(b xor secretkey)
     echo(encoded_shellcode)
 
-    echo("Having fun?")
-
     for b in encoded_shellcode:
-        decoded_shellcode.add(b or secretkey)
-    echo(decoded_shellcode)
-
-    assert decoded_shellcode == shellcode
-
-    
-
+        echo($b.toHex())

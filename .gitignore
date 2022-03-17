@@ -2,3 +2,6 @@ syscalls.nim
 out.nim
 *.bin
 *.exe
+.idea
+.vscode
+/bin/

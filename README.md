@@ -1,10 +1,10 @@
 # Chocolatine
-Chocolatine is a repo to have fun with OSEP concepts and the Nim language.
+Trying to learn Nim by writing malwares. Chocolatine is a repo to have fun with OSEP concepts and the Nim language.
 
 ## But, why?
-Nim is an easy to learn, super powerful language that ticks all the requirements for malware development. 
+I have spare time.
 
-## Install Nim
+## Install Nim on Linux
 - `sudo apt install nim mingw-w64`
 - `nimble install nimcrypto strenc winim`
 
